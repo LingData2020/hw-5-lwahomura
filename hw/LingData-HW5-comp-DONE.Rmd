@@ -1,0 +1,250 @@
+---
+title: 'HW 5: Correlations and linear models. Tests for categorial variables'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(vcd) # for mosaic plots
+```
+
+## 1. Vowel reduction in Russian
+Pavel Duryagin ran an experiment on perception of vowel reduction in Russian language. The dataset `shva` includes the following variables:  
+_time1_ - reaction time 1  
+_duration_ - duration of the vowel in the stimuly (in milliseconds, ms)  
+_time2_ - reaction time 2  
+_f1_, _f2_, _f3_ - the 1st, 2nd and 3rd formant of the vowel measured in Hz (for a short introduction into formants, see [here](https://home.cc.umanitoba.ca/~krussll/phonetics/acoustic/formants.html))  
+_vowel_ - vowel classified according the 3-fold classification (_A_ - _a_ under stress, _a_ - _a/o_ as in the first syllable before the stressed one, _y_ (stands for shva) - _a/o_ as in the second etc. syllable before the stressed one or after the stressed syllable, cf. _g_[_y_]_g_[_a_]_t_[_A_]_l_[_y_] _gogotala_ `guffawed').  
+In this part, we will ask you to analyse correlation between f1, f2, and duration.
+The dataset is available [https://raw.githubusercontent.com/agricolamz/2018-MAG_R_course/master/data/duryagin_ReductionRussian.txt](here).
+
+### 1.0 
+Read the data from file to the variable `shva`.
+```{r 1.0}
+shva <- read_delim("https://raw.githubusercontent.com/agricolamz/2018-MAG_R_course/master/data/duryagin_ReductionRussian.txt", delim="\t")
+```
+
+### 1.1 
+Scatterplot `f1` and `f2` using `ggplot()`. 
+Design it to look like the [following](https://raw.githubusercontent.com/agricolamz/2018-MAG_R_course/master/img/duryagin1.png).
+```{r 1.1}
+ggplot(shva, aes(x=f2, y=f1, color=vowel)) +
+  geom_point(size=2) + xlim(1500,1300) + ylim(800,400)
+```
+
+### 1.2 
+Plot the boxplots of `f1` and `f2` for each vowel using `ggplot()`.
+Design it to look like [this](https://raw.githubusercontent.com/agricolamz/2018-MAG_R_course/master/img/duryagin2.png) and [this](https://raw.githubusercontent.com/agricolamz/2018-MAG_R_course/master/img/duryagin3.png).
+```{r 1.2}
+# f1 boxplot
+ggplot(shva, aes(vowel, f1)) + coord_flip() + geom_boxplot(data = shva, aes(fill=vowel))
+# f2 boxplot
+ggplot(shva, aes(vowel, f2)) + coord_flip() + geom_boxplot(data = shva, aes(fill=vowel))
+```
+
+### 1.3 
+Calculate Pearson's correlation of `f1` and `f2` (all data)
+```{r 1.3}
+cor.test(shva$f1, shva$f2)
+```
+
+### 
+1.4 Calculate Pearson's correlation of `f1` and `f2` for each vowel
+```{r 1.4}
+shva_A <- filter(shva, vowel == "A")
+shva_a <- filter(shva, vowel == "a")
+shva_y <- filter(shva, vowel == "y")
+
+cor.test(shva_A$f1, shva_A$f2)
+cor.test(shva_a$f1, shva_a$f2)
+cor.test(shva_y$f1, shva_y$f2)
+```
+
+## 2 Linear regressions
+
+### 2.1.1 
+Use the linear regression model to predict `f2` by `f1`.
+```{r 2.1.1}
+pred211 <- lm(data=shva, f2 ~ f1)
+summary(pred211)
+```
+
+### 2.1.2 
+Write down the equation for f2 using coefficients from the model (e.g. $y =  b + kx$)
+```{r 2.1.2}
+f2 = 1639.70215 + (-0.42875) * f1
+```
+
+### 2.1.3 
+Provide the adjusted R$^2$
+```{r 2.1.3}
+summary(pred211)$adj.r.squared
+```
+
+### 2.1.4 
+Add the regression line in the scatterplot 1.1.
+```{r 2.1.4}
+ggplot(shva, aes(x=f2, y=f1, color=vowel)) +
+  geom_point(size=2) + geom_smooth(data = shva, method=lm, inherit.aes = FALSE, aes(x=f2, y=f1))
+```
+
+### 2.1.5 
+Make a scatter plot for `f1` and `f2` grouped by vowels. 
+Use `ggplot()` and `facet_wrap()`.
+
+```{r 2.1.5}
+ggplot(shva, aes(x=f2, y=f1)) +
+  geom_point(size=2) + facet_wrap(vars(shva$vowel))
+```
+
+### 2.2.1 
+Use the linear regression model to predict `f2` by `f1` and `vowel`.
+```{r 2.2.1}
+pred221 <- lm(data=shva, f2 ~ f1 + vowel)
+summary(pred221)
+```
+
+### 2.2.2 
+What is the intercept of the model?
+```{r 2.2.2}
+pred221$coefficients[1]
+```
+
+### 2.2.3 
+Provide the adjusted R$^2$
+```{r 2.2.3}
+summary(pred221)$adj.r.squared
+```
+
+### 2.2.4 
+Write down your general conclusions about the relationship between `f1`, `f2`, and `vowels`.
+
+```
+It seems like f2 can be predicted using f1 and vowel though the dependency is not really linear - the Multiple R-squared is only 0.4899 (1 is ideal); so f2 can be explained using f1 and vowel, but not fully
+```
+
+## 3. Dutch causative constructions
+
+When the Dutch use two near-synonymous periphrastic causative verbs, *doen* and *laten*?
+```
+       De politie deed/liet de auto stoppen.
+  lit. the police did/let the car stop 
+       'The police stopped the car'
+```
+
+This is a data set on two rival constructions with *doen* and *laten* sampled from the newspaper corpora. The data frame includes 500 observations on the following 7 variables:
+
+* `Aux` -- verb: a factor with levels `doen` and `laten`  
+* `CrSem` -- the semantic class of the Causer: a factor with levels `Anim` (animate) and `Inanim` (inanimate)  
+* `CeSem` -- the semantic class of the Causee: a factor with levels `Anim` (animate) and `Inanim` (inanimate)  
+* `CdEvSem` -- the semantic domain of the caused event expressed by the Effected Predicate: a factor with levels `Ment` (mental) and `NonMent` (e.g. physical or social)  
+* `CeSynt` -- the syntactic status of the Causee: a factor with levels `Clause`, `Impl` (implicit, not expressed), `NP` (noun phrase), `PP` (prepositional phrase)    
+* `EPTrans` -- transitivity or intransitivity of the effected predicate, a factor with two levels `Tr` and `Intr`  
+* `Country` -- a factor with levels `BE` (Belgium) and `NL` (Netherlands)  
+* `Domain` -- a factor with four levels for newspaper domains.    
+
+Data from Natalya Levshina's `RLing` package available (here)[https://raw.githubusercontent.com/agricolamz/2018-MAG_R_course/master/data/dutch_causatives.csv]
+Read more on the constructions in [Levhina, Geerarts, Speelman 2014](https://www.academia.edu/7287585/Dutch_causative_constructions_Quantification_of_meaning_and_meaning_of_quantification_with_Dirk_Geeraerts_and_Dirk_Speelman_).
+
+### 3.0 
+Read the data from file to the variable `d_caus`.
+```{r 3.0}
+d_caus <- read.csv("https://raw.githubusercontent.com/agricolamz/2018-MAG_R_course/master/data/dutch_causatives.csv")
+summary(d_caus)
+```
+
+### 3.1 
+We are going to test whether the association between `Aux` and other categorical variables (`Aux` ~ `CrSem`, `Aux` ~ `CeSem`, etc) is statistically significant. The assiciation with which variable should be analysed using Fisher's Exact Test and not using Pearson's Chi-squared Test? Is this association statistically significant?
+```{r 3.1}
+# d_caus %>% filter(Aux == "doen", CeSynt == "Clause") # returns 0 rows => need to use Fisher's for Aux and CeSynt
+
+fisher.test(d_caus$Aux, d_caus$CeSynt)
+```
+```
+The result is not statistically significant
+```
+### 3.2. 
+Test the hypothesis that `Aux` and `EPTrans` are not independent with the help of Pearson's Chi-squared Test. 
+```{r 3.2}
+test32 <- chisq.test(d_caus$Aux, d_caus$EPTrans)
+test32
+```
+
+```
+Assuming that H0 was they were independent we can say that it was wrong and they are dependent (p-value is less than 0.001)
+```
+
+### 3.3 
+Provide expected frequencies for Pearson's Chi-squared Test of `Aux` and `EPTrans` variables.
+```{r 3.3}
+test32$expected
+```
+
+### 3.4. 
+Calculate the odds ratio for observed frequencies of `Aux` and `EPTrans`
+For 2×2 contigency table
+$$\begin{matrix}
+a & b \\
+c & d
+\end{matrix}
+$$
+one can find *odds ratio* as $(a/c)/(b/d)$.
+
+```{r 3.4}
+test32$observed
+(test32$observed[1,1] / test32$observed[2,1]) / (test32$observed[1,2] / test32$observed[2,2])
+```
+
+### 3.4.1 
+Find odds ratio for expected frequencies of `Aux` and `EPTrans`
+
+```{r 3.4.1}
+(test32$expected[1,1] / test32$expected[2,1]) / (test32$expected[1,2] / test32$expected[2,2])
+```
+What can you say about odds ratio of expected frequencies for arbitrary data?
+
+```
+We can see that intransitivity of the effected predicate leads to usage "doen" more than 2.6 times frequently  
+```
+
+### 3.5 
+Calculate effect size for this test using Cramer's V (phi).
+```{r 3.5}
+library(lsr)
+cramersV(test32$observed)
+```
+
+### 3.6. 
+Report the results of independence test using the following template:
+```
+We have / have not found a significant association between variables ... and ... (p < 0.001).  The odds of ... were ... times higher / lower in (group ....) than in (group ....). Effect size is large / medium / small (Cramer's V = ....).
+```
+
+```
+We have not found a significant association between variables Aux and EPTrans (p < 0.001).  The odds of "doen" were 2.606162 times higher in Intr than in Tr. Effect size is small (Cramer's V = 0.1691587).
+```
+
+### 3.7 
+Visualize the distribution using mosaic plot.
+Use `mosaic()` function from `vcd` library.
+```{r 3.7}
+mosaic(~ Aux + EPTrans, data=d_caus, shade=TRUE, legend=TRUE)
+```
+
+Below is an example of how to use mosaic() with three variables.
+```{r 3.7.1}
+# mosaic(~ Aux + CrSem + Country, data=d_caus, shade=TRUE, legend=TRUE)
+```
+
+### 3.8 
+Why is it not recommended to run multiple Chisq tests of independence on different variables within your dataset whithout adjusting for the multiplicity? (i.e. just testing all the pairs of variables one by one)  
+```
+It's not recommended because each test brings its chance to return an error; and in case we have n variables and the chance of an error is p  we will make n * (n-1) / 2 tests - the probability of making no error will be (1-p)^(n*(n-1)/2),
+and it goes to 0 pretty fast even if p is 0.001 - for n = 10 it will be 0.96; for n = 25 it will be 0.74 and so on
+```
+
+### 3.9 
+Provide a short text (300 words) describing the hypothesis of this study and the results of your analysis.
+```
+There are 2 near-synonymous periphrastic words in Dutch - "doen" and "laten"; so we decided to make and test a hypothesis that there is some  reason for both of them to be present in the language. We got a data set of observations on this two words with different variables like the type of the predicate, parameters of the observee and so on. We decided to find some of the parameters which make the difference between the verbs - as mentioned before, we thought they were nead-synonymous though not fully. We decided to test the associations Aux ~ CeSynt and Aux ~ EPTrans. We  discovered that the semantic of Causee  affects the usage of this two verbs using the Fisher's exact test. With the help of the Pearson's Chi-squared Test we found out that one the other cause of the existance of two verbs is that "doen" is much more often (2.6 times) associated with intransitive effected verbs than "laten"; the association between Aux and EPTrans is pretty weak. As the result we can say that our hypothesis was correct - even though the verbs "doen" and "laten" seem to be near-synonymous, they are used in different situatuon; e.g. if we wanted to say "they destabilized the situation in the country" = "they made the situation in the country destablize" we would better use the verb "doen"; if we wanted to say "they grew the plant" = "they made the plant grow" we would better use the verb "laten".
+```
